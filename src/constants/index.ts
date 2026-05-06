@@ -1,4 +1,4 @@
-const API_URL = import.meta.env.VITE_API_URL ?? 'https://91ka2ysb93.execute-api.us-east-1.amazonaws.com'
+export const API_URL = (import.meta as any).env?.VITE_API_URL || 'https://91ka2ysb93.execute-api.us-east-1.amazonaws.com'
 
 export const API_BASE_URLS = {
   ms1: `${API_URL}/features`,

@@ -29,20 +29,25 @@ export function Features() {
   const [activeTab, setActiveTab] = useState<ActiveTab>('datasets')
 
   // Datasets state
-  const [datasets, setDatasets]     = useState<Dataset[]>([])
-  const [dsPage, setDsPage]         = useState(1)
-  const [dsTotal, setDsTotal]       = useState(0)
-  const [dsLoading, setDsLoading]   = useState(false)
-  const [dsActivo, setDsActivo]     = useState<string>('')
-  const [dsDominio, setDsDominio]   = useState('')
+  const [datasets, setDatasets]   = useState<Dataset[]>([])
+  const [dsPage, setDsPage]       = useState(1)
+  const [dsTotal, setDsTotal]     = useState(0)
+  const [dsLoading, setDsLoading] = useState(false)
+  const [dsActivo, setDsActivo]   = useState<string>('')
+  const [dsDominio, setDsDominio] = useState('')
+
+  // Modal crear dataset
+  const [showCreateDs, setShowCreateDs] = useState(false)
+  const [newDs, setNewDs] = useState({ nombre: '', dominio: '', descripcion: '' })
+  const [creating, setCreating] = useState(false)
 
   // Features state
-  const [features, setFeatures]       = useState<Feature[]>([])
-  const [fPage, setFPage]             = useState(1)
-  const [fTotal, setFTotal]           = useState(0)
-  const [fLoading, setFLoading]       = useState(false)
-  const [fTipo, setFTipo]             = useState('')
-  const [fDatasetId, setFDatasetId]   = useState('')
+  const [features, setFeatures]     = useState<Feature[]>([])
+  const [fPage, setFPage]           = useState(1)
+  const [fTotal, setFTotal]         = useState(0)
+  const [fLoading, setFLoading]     = useState(false)
+  const [fTipo, setFTipo]           = useState('')
+  const [fDatasetId, setFDatasetId] = useState('')
 
   useEffect(() => { loadDatasets() }, [dsPage, dsActivo, dsDominio])
   useEffect(() => { loadFeatures() }, [fPage, fTipo])
@@ -71,18 +76,30 @@ export function Features() {
     } finally { setFLoading(false) }
   }
 
+  async function handleCreateDataset() {
+    if (!newDs.nombre || !newDs.dominio) return
+    setCreating(true)
+    try {
+      await apiService.createDataset({ ...newDs, activo: true })
+      setNewDs({ nombre: '', dominio: '', descripcion: '' })
+      setShowCreateDs(false)
+      loadDatasets()
+    } finally { setCreating(false) }
+  }
+
   function handleFeaturesSearch() { setFPage(1); loadFeatures() }
 
   const tabBtn = (id: ActiveTab, label: string) => (
     <button
       onClick={() => setActiveTab(id)}
       style={{
-        padding: '6px 16px', borderRadius: 6, border: activeTab === id ? '1px solid rgba(0,229,160,0.25)' : '1px solid transparent',
+        padding: '6px 16px', borderRadius: 6,
+        border: activeTab === id ? '1px solid rgba(0,229,160,0.25)' : '1px solid transparent',
         background: activeTab === id ? 'var(--green-dim)' : 'transparent',
         color: activeTab === id ? 'var(--green)' : 'var(--text-3)',
         cursor: 'pointer', fontFamily: 'var(--font-mono)', fontSize: 11,
-        fontWeight: activeTab === id ? 700 : 400, letterSpacing: '0.06em', textTransform: 'uppercase',
-        transition: 'all 0.15s',
+        fontWeight: activeTab === id ? 700 : 400, letterSpacing: '0.06em',
+        textTransform: 'uppercase', transition: 'all 0.15s',
       }}
     >{label}</button>
   )
@@ -94,61 +111,122 @@ export function Features() {
         <h1 style={{ fontSize: 22, fontWeight: 600, color: 'var(--text)', letterSpacing: '-0.02em' }}>Feature Catalog</h1>
       </div>
 
-      {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 6, marginBottom: 16 }}>
         {tabBtn('datasets', 'Datasets')}
         {tabBtn('features', 'Features')}
       </div>
 
       {activeTab === 'datasets' && (
-        <Card title="Datasets · MS1 Registry">
-          <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>Status</div>
-              <select value={dsActivo} onChange={e => { setDsActivo(e.target.value); setDsPage(1) }} style={selectStyle}>
-                <option value="">All</option>
-                <option value="true">Active</option>
-                <option value="false">Inactive</option>
-              </select>
-            </div>
-            <div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>Domain</div>
-              <input
-                value={dsDominio}
-                onChange={e => { setDsDominio(e.target.value); setDsPage(1) }}
-                placeholder="e.g. finanzas"
-                style={{ ...inputStyle, width: 160 }}
-                onFocus={e => e.currentTarget.style.borderColor = 'rgba(0,229,160,0.4)'}
-                onBlur={e => e.currentTarget.style.borderColor = 'var(--border-2)'}
-              />
-            </div>
+        <>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+            <button onClick={() => setShowCreateDs(true)} style={{
+              padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
+              background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>+ NEW DATASET</button>
           </div>
 
-          <DataTable
-            columns={[
-              { key: 'id', label: 'ID' },
-              { key: 'nombre', label: 'Nombre' },
-              { key: 'dominio', label: 'Dominio', render: v => (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'var(--blue-dim)', color: 'var(--blue)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{v}</span>
-              )},
-              { key: 'descripcion', label: 'Descripción', render: v => (
-                <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{v ? (v.length > 50 ? v.slice(0,50)+'…' : v) : '—'}</span>
-              )},
-              { key: 'activo', label: 'Estado', render: v => (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '2px 7px', borderRadius: 4, background: v ? 'var(--green-dim)' : 'rgba(255,255,255,0.05)', color: v ? 'var(--green)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
-                  <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor' }} />
-                  {v ? 'ACTIVE' : 'INACTIVE'}
-                </span>
-              )},
-              { key: 'created_at', label: 'Created', render: v => (
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>{v ? new Date(v).toLocaleDateString() : '—'}</span>
-              )},
-            ]}
-            data={datasets}
-            loading={dsLoading}
-          />
-          <Pagination page={dsPage - 1} onPrevious={() => setDsPage(p => Math.max(1, p - 1))} onNext={() => setDsPage(p => p + 1)} canPrevious={dsPage > 1} canNext={datasets.length === PAGE_SIZE} total={dsTotal} />
-        </Card>
+          {showCreateDs && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+            }}>
+              <div style={{
+                background: 'var(--bg-2)', border: '1px solid var(--border)',
+                borderRadius: 14, padding: 28, width: 420,
+                display: 'flex', flexDirection: 'column', gap: 16,
+              }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
+                  color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  New Dataset
+                </div>
+                {[
+                  { label: 'NOMBRE', key: 'nombre', placeholder: 'customer_churn_2024' },
+                  { label: 'DOMINIO', key: 'dominio', placeholder: 'finanzas' },
+                  { label: 'DESCRIPCIÓN', key: 'descripcion', placeholder: 'Descripción del dataset' },
+                ].map(field => (
+                  <div key={field.key}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)',
+                      letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>{field.label}</div>
+                    <input
+                      value={newDs[field.key as keyof typeof newDs]}
+                      onChange={e => setNewDs(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 7,
+                        border: '1px solid var(--border-2)', background: 'var(--bg-3)',
+                        color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 12,
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                ))}
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button onClick={() => setShowCreateDs(false)} style={{
+                    padding: '7px 16px', borderRadius: 7, border: '1px solid var(--border-2)',
+                    background: 'transparent', color: 'var(--text-3)', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', fontSize: 10,
+                  }}>CANCEL</button>
+                  <button onClick={handleCreateDataset} disabled={creating} style={{
+                    padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
+                    background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                    opacity: creating ? 0.6 : 1,
+                  }}>{creating ? 'CREATING…' : 'CREATE'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <Card title="Datasets · MS1 Registry">
+            <div style={{ display: 'flex', gap: 10, marginBottom: 18, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>Status</div>
+                <select value={dsActivo} onChange={e => { setDsActivo(e.target.value); setDsPage(1) }} style={selectStyle}>
+                  <option value="">All</option>
+                  <option value="true">Active</option>
+                  <option value="false">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)', letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>Domain</div>
+                <input
+                  value={dsDominio}
+                  onChange={e => { setDsDominio(e.target.value); setDsPage(1) }}
+                  placeholder="e.g. finanzas"
+                  style={{ ...inputStyle, width: 160 }}
+                  onFocus={e => e.currentTarget.style.borderColor = 'rgba(0,229,160,0.4)'}
+                  onBlur={e => e.currentTarget.style.borderColor = 'var(--border-2)'}
+                />
+              </div>
+            </div>
+            <DataTable
+              columns={[
+                { key: 'id', label: 'ID' },
+                { key: 'nombre', label: 'Nombre' },
+                { key: 'dominio', label: 'Dominio', render: v => (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'var(--blue-dim)', color: 'var(--blue)', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{v}</span>
+                )},
+                { key: 'descripcion', label: 'Descripción', render: v => (
+                  <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{v ? (v.length > 50 ? v.slice(0,50)+'…' : v) : '—'}</span>
+                )},
+                { key: 'activo', label: 'Estado', render: v => (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 9, padding: '2px 7px', borderRadius: 4, background: v ? 'var(--green-dim)' : 'rgba(255,255,255,0.05)', color: v ? 'var(--green)' : 'var(--text-3)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                    <span style={{ width: 4, height: 4, borderRadius: '50%', background: 'currentColor' }} />
+                    {v ? 'ACTIVE' : 'INACTIVE'}
+                  </span>
+                )},
+                { key: 'created_at', label: 'Created', render: v => (
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>{v ? new Date(v).toLocaleDateString() : '—'}</span>
+                )},
+              ]}
+              data={datasets}
+              loading={dsLoading}
+            />
+            <Pagination page={dsPage - 1} onPrevious={() => setDsPage(p => Math.max(1, p - 1))} onNext={() => setDsPage(p => p + 1)} canPrevious={dsPage > 1} canNext={datasets.length === PAGE_SIZE} total={dsTotal} />
+          </Card>
+        </>
       )}
 
       {activeTab === 'features' && (
@@ -174,11 +252,10 @@ export function Features() {
             <button onClick={handleFeaturesSearch} style={{
               padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
               background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
-              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700, letterSpacing: '0.1em',
-              textTransform: 'uppercase', transition: 'all 0.15s',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.15s',
             }}>SEARCH</button>
           </div>
-
           <DataTable
             columns={[
               { key: 'id', label: 'ID' },

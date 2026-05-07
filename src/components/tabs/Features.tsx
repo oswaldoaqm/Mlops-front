@@ -49,6 +49,14 @@ export function Features() {
   const [fTipo, setFTipo]           = useState('')
   const [fDatasetId, setFDatasetId] = useState('')
 
+  // Modal crear feature
+  const [showCreateFeat, setShowCreateFeat] = useState(false)
+  const [newFeat, setNewFeat] = useState({
+    nombre_variable: '', tipo_dato: 'float64',
+    descripcion: '', es_categorica: false, dataset_id: ''
+  })
+  const [creatingFeat, setCreatingFeat] = useState(false)
+
   useEffect(() => { loadDatasets() }, [dsPage, dsActivo, dsDominio])
   useEffect(() => { loadFeatures() }, [fPage, fTipo])
 
@@ -87,6 +95,35 @@ export function Features() {
     } finally { setCreating(false) }
   }
 
+  async function handleCreateFeature() {
+    if (!newFeat.nombre_variable || !newFeat.dataset_id) return
+    setCreatingFeat(true)
+    try {
+      await apiService.createFeature({
+        nombre_variable: newFeat.nombre_variable,
+        tipo_dato: newFeat.tipo_dato,
+        descripcion: newFeat.descripcion,
+        es_categorica: newFeat.es_categorica,
+        dataset_id: parseInt(newFeat.dataset_id)
+      })
+      setNewFeat({ nombre_variable: '', tipo_dato: 'float64', descripcion: '', es_categorica: false, dataset_id: '' })
+      setShowCreateFeat(false)
+      loadFeatures()
+    } finally { setCreatingFeat(false) }
+  }
+
+  async function handleDeleteDataset(id: number) {
+    if (!confirm(`¿Eliminar dataset #${id}?`)) return
+    await apiService.deleteDataset(id)
+    loadDatasets()
+  }
+
+  async function handleDeleteFeature(id: number) {
+    if (!confirm(`¿Eliminar feature #${id}?`)) return
+    await apiService.deleteFeature(id)
+    loadFeatures()
+  }
+
   function handleFeaturesSearch() { setFPage(1); loadFeatures() }
 
   const tabBtn = (id: ActiveTab, label: string) => (
@@ -118,7 +155,7 @@ export function Features() {
 
       {activeTab === 'datasets' && (
         <>
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 12 }}>
             <button onClick={() => setShowCreateDs(true)} style={{
               padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
               background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
@@ -220,6 +257,13 @@ export function Features() {
                 { key: 'created_at', label: 'Created', render: v => (
                   <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-3)' }}>{v ? new Date(v).toLocaleDateString() : '—'}</span>
                 )},
+                { key: 'id', label: 'Del', render: v => (
+                  <button onClick={() => handleDeleteDataset(Number(v))} style={{
+                    padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(255,77,106,0.2)',
+                    background: 'var(--red-dim)', color: 'var(--red)', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', fontSize: 9,
+                  }}>✕</button>
+                )},
               ]}
               data={datasets}
               loading={dsLoading}
@@ -255,7 +299,93 @@ export function Features() {
               fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
               letterSpacing: '0.1em', textTransform: 'uppercase', transition: 'all 0.15s',
             }}>SEARCH</button>
+            <button onClick={() => setShowCreateFeat(true)} style={{
+              padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
+              background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
+              fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+              letterSpacing: '0.1em', textTransform: 'uppercase',
+            }}>+ NEW FEATURE</button>
           </div>
+
+          {showCreateFeat && (
+            <div style={{
+              position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200,
+            }}>
+              <div style={{
+                background: 'var(--bg-2)', border: '1px solid var(--border)',
+                borderRadius: 14, padding: 28, width: 420,
+                display: 'flex', flexDirection: 'column', gap: 16,
+              }}>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
+                  color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+                  New Feature
+                </div>
+                {[
+                  { label: 'NOMBRE VARIABLE', key: 'nombre_variable', placeholder: 'edad_cliente' },
+                  { label: 'DESCRIPCIÓN', key: 'descripcion', placeholder: 'Descripción de la variable' },
+                  { label: 'DATASET ID', key: 'dataset_id', placeholder: '1' },
+                ].map(field => (
+                  <div key={field.key}>
+                    <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)',
+                      letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>{field.label}</div>
+                    <input
+                      value={newFeat[field.key as keyof typeof newFeat] as string}
+                      onChange={e => setNewFeat(prev => ({ ...prev, [field.key]: e.target.value }))}
+                      placeholder={field.placeholder}
+                      style={{
+                        width: '100%', padding: '8px 12px', borderRadius: 7,
+                        border: '1px solid var(--border-2)', background: 'var(--bg-3)',
+                        color: 'var(--text)', fontFamily: 'var(--font-mono)', fontSize: 12,
+                        outline: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                  </div>
+                ))}
+                <div>
+                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: 9, color: 'var(--text-3)',
+                    letterSpacing: '0.1em', marginBottom: 5, textTransform: 'uppercase' }}>TIPO DE DATO</div>
+                  <select
+                    value={newFeat.tipo_dato}
+                    onChange={e => setNewFeat(prev => ({ ...prev, tipo_dato: e.target.value }))}
+                    style={{
+                      width: '100%', padding: '8px 12px', borderRadius: 7,
+                      border: '1px solid var(--border-2)', background: 'var(--bg-3)',
+                      color: 'var(--text-2)', fontFamily: 'var(--font-sans)', fontSize: 13,
+                      outline: 'none', cursor: 'pointer',
+                    }}
+                  >
+                    {TIPO_DATOS.map(t => <option key={t} value={t}>{t}</option>)}
+                  </select>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={newFeat.es_categorica}
+                    onChange={e => setNewFeat(prev => ({ ...prev, es_categorica: e.target.checked }))}
+                    style={{ cursor: 'pointer' }}
+                  />
+                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: 10, color: 'var(--text-2)' }}>
+                    ES CATEGÓRICA
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 4 }}>
+                  <button onClick={() => setShowCreateFeat(false)} style={{
+                    padding: '7px 16px', borderRadius: 7, border: '1px solid var(--border-2)',
+                    background: 'transparent', color: 'var(--text-3)', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', fontSize: 10,
+                  }}>CANCEL</button>
+                  <button onClick={handleCreateFeature} disabled={creatingFeat} style={{
+                    padding: '7px 18px', borderRadius: 7, border: '1px solid rgba(0,229,160,0.25)',
+                    background: 'var(--green-dim)', color: 'var(--green)', cursor: 'pointer',
+                    fontFamily: 'var(--font-mono)', fontSize: 10, fontWeight: 700,
+                    opacity: creatingFeat ? 0.6 : 1,
+                  }}>{creatingFeat ? 'CREATING…' : 'CREATE'}</button>
+                </div>
+              </div>
+            </div>
+          )}
+
           <DataTable
             columns={[
               { key: 'id', label: 'ID' },
@@ -271,6 +401,13 @@ export function Features() {
               )},
               { key: 'descripcion', label: 'Descripción', render: v => (
                 <span style={{ color: 'var(--text-3)', fontSize: 11 }}>{v ? (v.length > 40 ? v.slice(0,40)+'…' : v) : '—'}</span>
+              )},
+              { key: 'id', label: 'Del', render: v => (
+                <button onClick={() => handleDeleteFeature(Number(v))} style={{
+                  padding: '2px 8px', borderRadius: 4, border: '1px solid rgba(255,77,106,0.2)',
+                  background: 'var(--red-dim)', color: 'var(--red)', cursor: 'pointer',
+                  fontFamily: 'var(--font-mono)', fontSize: 9,
+                }}>✕</button>
               )},
             ]}
             data={features}
